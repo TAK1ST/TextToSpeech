@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nhật - Việt Hội Thoại</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Roboto', sans-serif;
+            background-color: #f9f9f9;
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            display: flex;
+            gap: 20px;
+            max-width: 1200px;
+            margin: auto;
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+        .column {
+            flex: 1;
+        }
+        h1 {
+            font-size: 1.5em;
+            color: #333;
+            text-align: center;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            color: #555;
+        }
+        .form-group textarea {
+            width: 100%;
+            height: 200px;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            resize: none;
+        }
+        .dialogue-box {
+            border: 1px solid #ccc;
+            padding: 10px;
+            margin-bottom: 10px;
+            cursor: pointer;
+            background-color: #f7f7f7;
+            border-radius: 5px;
+        }
+        .dialogue-box:hover {
+            background-color: #e0e0e0;
+        }
+        .hiragana {
+            font-size: 0.8em;
+            color: #666;
+            margin-top: 5px;
+        }
+        .translation {
+            font-size: 0.9em;
+            color: #333;
+            margin-top: 5px;
+        }
+        .audio-player {
+            margin-top: 20px;
+            text-align: center;
+        }
+        .speaker-a .speaker {
+            color: #007bff;
+            font-weight: bold;
+        }
+        .speaker-b .speaker {
+            color: #28a745;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="column jp">
+            <h1>Tiếng Nhật</h1>
+            <div class="form-group">
+                <label for="text_jp">Nhập văn bản tiếng Nhật</label>
+                <textarea id="text_jp" placeholder="Nhập văn bản tiếng Nhật ở đây..."></textarea>
+            </div>
+            <div id="dialogues_jp"></div>
+        </div>
+        <div class="column vn">
+            <h1>Tiếng Việt</h1>
+            <div id="translation_vn"></div>
+        </div>
+    </div>
+    <div class="audio-player">
+        <audio id="audioPlayer" controls></audio>
+    </div>
+
+    <script>
+        const textJp = document.getElementById('text_jp');
+        const dialoguesJp = document.getElementById('dialogues_jp');
+        const translationVn = document.getElementById('translation_vn');
+
+        textJp.addEventListener('input', function() {
+            const text = this.value;
+            fetch('/translate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: `text=${encodeURIComponent(text)}`
+            })
+            .then(response => response.json())
+            .then(data => {
+                // Hiển thị bản dịch tiếng Việt, tách thành từng dòng
+                const vietnameseLines = data.translation.split('\n').filter(line => line.trim() !== '');
+                translationVn.innerHTML = '';
+                vietnameseLines.forEach(line => {
+                    const div = document.createElement('div');
+                    div.className = 'dialogue-box';
+                    div.textContent = line;
+                    translationVn.appendChild(div);
+                });
+
+                // Xử lý văn bản tiếng Nhật, tạo hộp thoại
+                const dialogues = data.original.split('\n').filter(line => line.trim() !== '');
+                dialoguesJp.innerHTML = '';
+                dialogues.forEach((dialogue, index) => {
+                    const box = document.createElement('div');
+                    box.className = 'dialogue-box';
+                    box.innerHTML = `${dialogue}<div class="hiragana">${data.hiragana.split(' ')[index]}</div>`;
+                    box.addEventListener('click', function() {
+                        console.log('Click event triggered for:', dialogue);
+                        playTTS(dialogue, 'ja');
+                    });
+                    dialoguesJp.appendChild(box);
+                });
+            });
+        });
+
+        function playTTS(text, lang) {
+            fetch('/tts', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: `text=${encodeURIComponent(text)}&lang=${lang}`
+            })
+            .then(response => response.blob())
+            .then(blob => {
+                const url = URL.createObjectURL(blob);
+                const audio = new Audio(url);
+                audio.play();
+            })
+            .catch(error => console.error('Error playing audio:', error));
+        }
+    </script>
+</body>
+</html>
